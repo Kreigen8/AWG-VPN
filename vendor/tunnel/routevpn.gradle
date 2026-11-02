@@ -1,0 +1,25 @@
+plugins { id 'com.android.library' }
+
+// RouteVPN compiles the pinned upstream Java sources and packages verified
+// upstream native binaries. The original upstream build.gradle.kts is retained
+// for reference but is not executed by this project.
+android {
+    namespace 'org.amnezia.awg.tunnel'
+    compileSdk 35
+    defaultConfig { minSdk 29 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+    lint { disable 'LongLogTag', 'NewApi' }
+    testOptions { unitTests.returnDefaultValues = true }
+}
+
+dependencies {
+    implementation 'androidx.annotation:annotation:1.7.1'
+    implementation 'androidx.collection:collection:1.4.0'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+    testImplementation 'junit:junit:4.13.2'
+}
