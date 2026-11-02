@@ -82,6 +82,11 @@ public final class MainActivity extends Activity {
     private TextView profileName, profileDetail, routingSummary, editNotice;
     private Button connectButton, importButton, manageButton, appButton;
     private LinearLayout profileRow;
+    private TextView updateSummary;
+    private final UpdateManager.Listener updateListener = state -> {
+        if (updateSummary == null) return;
+        updateSummary.setText(state.update == null ? "Версия " + UpdateManager.get(this).installedVersion() : "Доступна версия " + state.update.versionName);
+    };
     private final List<TextView> modeViews = new ArrayList<>();
     private final String[] modes = {"ALL", "ONLY_SELECTED", "EXCEPT_SELECTED"};
     private Dialog appsDialog;
@@ -118,6 +123,8 @@ public final class MainActivity extends Activity {
         handler.removeCallbacks(ticker);
         handler.post(ticker);
         if (!active(RouteVpnService.snapshot())) RouteVpnService.restore(this, false);
+        UpdateManager.get(this).listen(updateListener);
+        UpdateManager.get(this).check(true);
     }
 
     @Override protected void onNewIntent(Intent intent) {
@@ -134,6 +141,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onStop() {
+        UpdateManager.get(this).stopListening(updateListener);
         handler.removeCallbacks(ticker);
         super.onStop();
     }
@@ -308,6 +316,12 @@ public final class MainActivity extends Activity {
             } else toast("Шторка Android → Изменить кнопки → AWG VPN.");
         });
         add(page, tile, 8);
+        add(page, text("Обновления", 19, INK, true), 24);
+        updateSummary = text("", 13, MUTED, false);
+        add(page, updateSummary, 10);
+        Button updates = textButton("Проверить обновления GitHub");
+        updates.setOnClickListener(view -> startActivity(new Intent(this, UpdateActivity.class)));
+        add(page, updates, 6);
     }
 
     private void render() {

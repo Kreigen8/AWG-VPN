@@ -19,6 +19,22 @@ $sourceVersion = $versionName -replace '-preview$', ''
 $apkName = "AWG-VPN-$versionName.apk"
 $zipName = "AWG-VPN-$sourceVersion-source.zip"
 Copy-Item -LiteralPath $releaseApk -Destination (Join-Path 'dist' $apkName) -Force
+$signerLine = $signature | Where-Object { $_ -match '^Signer #1 certificate SHA-256 digest: ' } | Select-Object -First 1
+if (-not $signerLine) { throw 'APK signing certificate digest missing.' }
+$signerDigest = ($signerLine -replace '^Signer #1 certificate SHA-256 digest: ', '').Trim().ToLowerInvariant()
+if ($signerDigest -notmatch '^[a-f0-9]{64}$') { throw 'Invalid signing certificate digest.' }
+$updateManifest = [ordered]@{
+    schemaVersion = 1
+    packageName = $metadata.applicationId
+    versionName = $versionName
+    versionCode = $metadata.elements[0].versionCode
+    minSdk = $metadata.minSdkVersionForDexing
+    apkName = $apkName
+    apkSize = (Get-Item -LiteralPath $releaseApk).Length
+    sha256 = (Get-FileHash -LiteralPath $releaseApk -Algorithm SHA256).Hash.ToLowerInvariant()
+    signerSha256 = $signerDigest
+}
+[IO.File]::WriteAllText((Join-Path $projectRoot 'dist\update.json'), ($updateManifest | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
 
 # Archive an explicit source allowlist. Local signing keys, credentials, build
 # outputs, downloaded SDK/JDK files and caches are intentionally never traversed.
@@ -50,7 +66,7 @@ try {
     }
 } finally { $archive.Dispose(); $stream.Dispose() }
 
-$checksumLines = foreach ($name in @($apkName, $zipName)) {
+$checksumLines = foreach ($name in @($apkName, $zipName, 'update.json')) {
     $hash = (Get-FileHash -LiteralPath (Join-Path 'dist' $name) -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $name"
 }

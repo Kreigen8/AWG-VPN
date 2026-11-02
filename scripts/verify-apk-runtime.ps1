@@ -46,7 +46,11 @@ $required = @(
     'Lru/routevpn/app/VpnApplication;',
     'Lru/routevpn/app/ConfigEditorActivity;',
     'Lru/routevpn/app/VpnTileService;',
-    'Lru/routevpn/app/RestoreReceiver;'
+    'Lru/routevpn/app/RestoreReceiver;',
+    'Lru/routevpn/app/UpdateActivity;',
+    'Lru/routevpn/app/UpdateManager;',
+    'Lru/routevpn/app/UpdateApkVerifier;',
+    'Landroidx/core/content/FileProvider;'
 )
 $missing = @($required | Where-Object { -not $definitions.Contains($_) })
 if ($missing.Count -gt 0) { throw ('APK is missing required camera runtime class definitions: ' + ($missing -join ', ')) }

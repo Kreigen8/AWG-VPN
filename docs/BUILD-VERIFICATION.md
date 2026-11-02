@@ -1,3 +1,17 @@
+# Verification — 0.2.1-preview, 2026-11-02
+
+The local `assembleDebug`, `assembleRelease`, `testDebugUnitTest` and `lintDebug` build passed. There are 111 tests in the suite: 110 passed locally on Windows, 1 FileProvider POSIX-filesystem test is reserved for Linux CI, and there are no failures/errors. The complete suite also runs in GitHub Actions on Linux.
+
+New updater checks cover public preview releases, strict release manifests, draft/legacy filtering, hostile URLs and redirects, bounded metadata/APK downloads, cancellation, checksums, installed/archive PackageManager identities, signer changes, downgrades, incompatible packages, cached-file tampering, cache recovery, offline install preparation, unknown-source permission flow and unchanged profile/selection files. Native Android graphics screenshots of available/ready states were inspected.
+
+The release keeps app ID `ru.routevpn.app`, AES key alias and profile schema, preference namespaces, and the same signing certificate. Version code increases from 4 to 5. The new updater stores only public release metadata and its own preferences, and exposes only the cache/updates directory to Android's installer using a temporary read-only URI grant. It never uninstalls AWG VPN or edits the encrypted profile store.
+
+The new packaging script generates `update.json` from the signed APK's metadata, byte size, SHA-256 and signing certificate. APK signing, 21 required DEX class definitions and 16 KiB ZIP alignment are checked before publication.
+
+Network/PackageManager fixtures and the install-launch seam are explicit test fakes. FileProvider's real root/URI check runs on Linux because AndroidX's POSIX path boundary is incompatible with Windows canonical file paths. No phone is attached; actual Android installer confirmation and on-device replacement still require phone validation. See [UPDATES.md](UPDATES.md).
+
+---
+
 # Verification — 0.2.0-preview, 2026-11-02
 
 The final local build passed `assembleDebug`, `assembleRelease`, `testDebugUnitTest` and `lintDebug`.
