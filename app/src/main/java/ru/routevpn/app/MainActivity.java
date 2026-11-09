@@ -296,7 +296,7 @@ public final class MainActivity extends Activity {
         restore.setChecked(connectionOptions.autoReconnect());
         restore.setOnCheckedChangeListener((button, enabled) -> connectionOptions.setAutoReconnect(enabled));
         add(page, restore, 12);
-        add(page, text("После смены сети и перезапуска приложения восстанавливается последнее включённое подключение. Ручное отключение запоминается.", 12, MUTED, false), 8);
+        add(page, text("После смены сети, сна и сбоев связи восстанавливается последнее включённое подключение. Ручное отключение запоминается.", 12, MUTED, false), 8);
         Button systemVpn = textButton("Автозапуск: настройки VPN Android");
         systemVpn.setOnClickListener(view -> {
             try { startActivity(new Intent(android.provider.Settings.ACTION_VPN_SETTINGS)); }

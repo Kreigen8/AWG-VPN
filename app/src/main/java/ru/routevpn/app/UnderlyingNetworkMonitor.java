@@ -5,11 +5,18 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.LinkProperties;
+import android.net.LinkAddress;
+import android.net.RouteInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /** Observes physical internet networks, never the VPN itself (which would cause a restart loop). */
@@ -17,6 +24,7 @@ final class UnderlyingNetworkMonitor {
     private final ConnectivityManager manager;
     private final Consumer<Network> listener;
     private final Map<Network, NetworkCapabilities> networks = new HashMap<>();
+    private final Map<Network, LinkState> links = new HashMap<>();
     private Network selected;
     private boolean registered;
     private final ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
@@ -24,7 +32,11 @@ final class UnderlyingNetworkMonitor {
             networks.put(network, capabilities);
             choose();
         }
-        @Override public void onLost(Network network) { networks.remove(network); choose(); }
+        @Override public void onLost(Network network) { networks.remove(network); links.remove(network); choose(); }
+        @Override public void onLinkPropertiesChanged(Network network, LinkProperties properties) {
+            LinkState current = new LinkState(properties), previous = links.put(network, current);
+            if (previous != null && network.equals(selected) && !previous.same(current)) listener.accept(network);
+        }
     };
 
     UnderlyingNetworkMonitor(Context context, Consumer<Network> listener) {
@@ -40,11 +52,22 @@ final class UnderlyingNetworkMonitor {
             manager.registerBestMatchingNetworkCallback(request, callback, new Handler(Looper.getMainLooper()));
         else manager.registerNetworkCallback(request, callback, new Handler(Looper.getMainLooper()));
         registered = true;
-        for (Network network : manager.getAllNetworks()) {
-            NetworkCapabilities caps = manager.getNetworkCapabilities(network);
-            if (caps != null) networks.put(network, caps);
+        // Only callback-owned networks are authoritative. Seeding getAllNetworks leaves stale
+        // alternatives forever when registerBestMatchingNetworkCallback only tracks the best one.
+    }
+    private static final class LinkState {
+        final String name;
+        final List<LinkAddress> addresses;
+        final List<RouteInfo> routes;
+        final List<InetAddress> dns;
+        LinkState(LinkProperties value) {
+            name = value.getInterfaceName(); addresses = new ArrayList<>(value.getLinkAddresses());
+            routes = new ArrayList<>(value.getRoutes()); dns = new ArrayList<>(value.getDnsServers());
         }
-        choose();
+        boolean same(LinkState right) {
+            return Objects.equals(name, right.name) && addresses.equals(right.addresses)
+                    && routes.equals(right.routes) && dns.equals(right.dns);
+        }
     }
     private void choose() {
         Network best = null;
@@ -69,6 +92,6 @@ final class UnderlyingNetworkMonitor {
         if (registered) {
             try { manager.unregisterNetworkCallback(callback); } catch (RuntimeException ignored) { }
         }
-        registered = false; networks.clear(); selected = null;
+        registered = false; networks.clear(); links.clear(); selected = null;
     }
 }

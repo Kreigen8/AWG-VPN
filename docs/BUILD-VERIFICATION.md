@@ -1,3 +1,17 @@
+# Verification — 0.2.2-preview, 2026-11-09
+
+The local `assembleDebug`, `assembleRelease`, `testDebugUnitTest` and `lintDebug` build passed. There are 136 tests: 135 passed on Windows, one existing POSIX FileProvider test is reserved for Linux CI, with no failures or errors. Lint reports zero errors and 22 warnings.
+
+New checks cover real loopback DNS exchanges and mandatory binding, cancellation, route matching, three-failure recovery, traffic overriding a timeout, restart budgets/cooldown, manual-stop and network-loss cancellation, disabled automatic recovery, diagnostics redaction, controller traffic in allowlist mode without changing saved rules, and physical address changes on API 29/35. Service recovery uses an explicit fake backend and fake probe transport; it does not claim to reproduce a native tunnel stall.
+
+A signed in-place update was installed on an Honor Magic 8 Pro running Android 17. The saved connection and routing rules restored, RX/TX and handshakes continued, and a DNS probe explicitly bound to this app's VPN Network returned SUCCESS. The attached device's app process remained alive during short observation. This is not a multi-day stability claim. The original intermittent failure has not been captured in a reproducible trace; upstream reports describe matching symptoms but do not establish this device's root cause.
+
+Package ID, signing certificate, encrypted profile format, AES key alias and preference namespaces remain unchanged. Version code increases from 5 to 6. Runtime allowlist inclusion of the controller changes no stored profile or other application's routing. The official native engine binaries are unchanged. Packaging verifies 23 runtime classes, the release signature and 16 KiB ZIP alignment. Raw phone diagnostics, private signing material and local caches are excluded from Git and release archives.
+
+The recovery policy, API/DNS limitations and diagnostic commands are documented in [CONNECTION-RECOVERY.md](CONNECTION-RECOVERY.md).
+
+---
+
 # Verification — 0.2.1-preview, 2026-11-02
 
 The local `assembleDebug`, `assembleRelease`, `testDebugUnitTest` and `lintDebug` build passed. There are 111 tests in the suite: 110 passed locally on Windows, 1 FileProvider POSIX-filesystem test is reserved for Linux CI, and there are no failures/errors. The complete suite also runs in GitHub Actions on Linux.

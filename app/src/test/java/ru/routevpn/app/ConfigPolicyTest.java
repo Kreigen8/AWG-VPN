@@ -95,10 +95,29 @@ public final class ConfigPolicyTest {
         Profile profile = ConfigPolicy.parseImported("test", BASE + PEER);
         profile.mode = Profile.ONLY_SELECTED;
         assertRejected(() -> ConfigPolicy.build(profile, Collections.emptySet()));
+        assertRejected(() -> ConfigPolicy.buildForConnection(profile, Collections.emptySet(), "ru.routevpn.app"));
         profile.packages.add("org.example.removed");
         assertRejected(() -> ConfigPolicy.build(profile, Collections.emptySet()));
         profile.mode = Profile.EXCEPT_SELECTED;
         assertRejected(() -> ConfigPolicy.build(profile, Collections.emptySet()));
+    }
+
+    @Test public void runtimeControllerTrafficIsAllowedWithoutChangingSavedAllowListOrConfig() {
+        Profile profile = ConfigPolicy.parseImported("test", BASE + PEER);
+        profile.mode = Profile.ONLY_SELECTED; profile.packages.add("org.example.browser");
+        Config runtime = ConfigPolicy.buildForConnection(profile, profile.packages, "ru.routevpn.app");
+        assertEquals(new LinkedHashSet<>(Arrays.asList("org.example.browser", "ru.routevpn.app")), runtime.getInterface().getIncludedApplications());
+        assertEquals(Collections.singleton("org.example.browser"), profile.packages);
+        assertEquals(BASE + PEER, profile.config);
+        assertEquals("22-30", runtime.getPeers().get(0).getPersistentKeepalive().get());
+        assertEquals("100-120", runtime.getInterface().getInitPacketMagicHeader().get());
+    }
+    @Test public void runtimeControllerNeverChangesAnExplicitDisallowList() {
+        Profile profile = ConfigPolicy.parseImported("test", BASE + PEER);
+        profile.mode = Profile.EXCEPT_SELECTED; profile.packages.add("ru.routevpn.app");
+        Config runtime = ConfigPolicy.buildForConnection(profile, profile.packages, "ru.routevpn.app");
+        assertEquals(profile.packages, runtime.getInterface().getExcludedApplications());
+        assertTrue(runtime.getInterface().getIncludedApplications().isEmpty());
     }
 
     @Test public void malformedConfigAndMissingClientFieldsAreRejected() {

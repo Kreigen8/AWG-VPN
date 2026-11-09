@@ -39,6 +39,14 @@ public final class ConfigPolicy {
 
     /** Rebuilds routing from local choices; imported application lists never override them. */
     public static Config build(Profile profile, Set<String> installedPackages) {
+        return build(profile, installedPackages, "");
+    }
+    /** The VPN controller needs its own in-tunnel DNS socket in allowlist mode. Never persists changes. */
+    public static Config buildForConnection(Profile profile, Set<String> installedPackages, String controllerPackage) {
+        validatePackageNames(Collections.singleton(controllerPackage));
+        return build(profile, installedPackages, controllerPackage);
+    }
+    private static Config build(Profile profile, Set<String> installedPackages, String controllerPackage) {
         if (profile == null) throw invalid("Сначала импортируйте конфигурацию VPN.");
         Config base = parseAndValidate(normalize(profile.config));
         if (!Profile.ALL.equals(profile.mode) && !Profile.ONLY_SELECTED.equals(profile.mode)
@@ -59,6 +67,9 @@ public final class ConfigPolicy {
                 throw invalid("Некоторые выбранные приложения удалены или недоступны. Обновите список приложений и сохраните выбор.");
             }
         }
+        // Add only after validating the user's original non-empty, installed allowlist.
+        // This is the app's own control traffic; no other app's routing is changed.
+        if (Profile.ONLY_SELECTED.equals(profile.mode) && !controllerPackage.isEmpty()) chosen.add(controllerPackage);
 
         // The official serializer preserves protocol parameters while removing stale routing.
         List<String> interfaceLines = new ArrayList<>();
