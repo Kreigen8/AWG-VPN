@@ -76,7 +76,10 @@ public final class ConnectionServiceTest {
     @Test public void networkSwitchRebuildsAndManualStopCancelsQueuedRebuild() throws Exception {
         ServiceController<TestService> controller = Robolectric.buildService(TestService.class).create();
         try {
-            TestService service = controller.get(); service.onStartCommand(connect(), 0, 1); await(() -> service.fake.ups == 1);
+            TestService service = controller.get(); service.onStartCommand(connect(), 0, 1);
+            // The fake reports UP before the owner has finished its startup bookkeeping.
+            // Wait for the published selection before delivering a subsequent network change.
+            await(() -> service.fake.ups == 1 && "profile-1".equals(new ProfileStore(service).getSelectedId()));
             service.network(ShadowNetwork.newInstance(101)); await(() -> service.fake.ups == 2);
             assertTrue(new ConnectionPreferences(service).wanted());
             service.network(ShadowNetwork.newInstance(102));

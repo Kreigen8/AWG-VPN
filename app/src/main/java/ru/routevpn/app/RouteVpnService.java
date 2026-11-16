@@ -115,7 +115,8 @@ public class RouteVpnService extends Service {
     private volatile Network observedNetwork;
     private volatile boolean networkMissing = true;
     private volatile String terminalError;
-    private String profileName = "AWG VPN", activeId = "", notificationText = "";
+    private String profileName = "AWG VPN", notificationText = "";
+    private volatile String activeId = "";
     private volatile long startedAt;
     private volatile String routingMode = "UNKNOWN";
     private volatile int selectedPackageCount, peerCount, dnsCount, runtimeMtu;
@@ -292,12 +293,12 @@ public class RouteVpnService extends Service {
             }
             if (!desired || stopping || destroying) return;
             backend.setState(tunnel, Tunnel.State.UP, config);
-            new ProfileStore(this).setSelectedId(targetId);
             startedAt = elapsedTime(); failures = 0;
             everStartedTunnel = true;
             watchdog.started(startedAt); lastProbeResult = "NOT_RUN";
             recordEvent("tunnel_up");
             if (!desired || stopping || destroying) { tearDown(); return; }
+            new ProfileStore(this).setSelectedId(targetId);
             publish("CONNECTING", "Туннель создан. Ожидаем ответ сервера…", 0, 0, 0);
         } catch (Exception | LinkageError failure) {
             if (!desired || stopping || destroying) return;

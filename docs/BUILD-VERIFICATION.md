@@ -1,4 +1,4 @@
-# Verification — 0.2.3-preview, 2026-11-16
+# Verification — 0.2.4-preview, 2026-11-16
 
 The local `assembleDebug`, `assembleRelease`, `testDebugUnitTest` and `lintDebug` build passed. The suite contains 160 tests: 159 passed on Windows and one existing POSIX FileProvider test is reserved for Linux CI. There are no failures/errors; lint reports zero errors and 22 warnings.
 
@@ -6,9 +6,11 @@ New external-control tests cover the default-off setting, manifest permission ow
 
 Native Android graphics were inspected for unchecked/checked portrait and landscape settings. The exported launcher's former `tile_connect` extra no longer starts VPN. The ordinary Quick Settings tile still uses the private service; its consent/restriction fallback opens the app for a user button press. The scoped UI detector reported no findings.
 
-Version code increases from 6 to 7. The package, signing certificate, encryption schema, Keystore alias and existing preference namespaces remain unchanged. Packaging verifies 25 runtime classes, the APK signature and 16 KiB ZIP alignment. Private signing data, caches, phone captures and user configs are excluded from publication.
+Version code increases from 6 to 8; 0.2.3 was not published as an application release. The package, signing certificate, encryption schema, Keystore alias and existing preference namespaces remain unchanged. Packaging verifies 25 runtime classes, the APK signature and 16 KiB ZIP alignment. Private signing data, caches, phone captures and user configs are excluded from publication.
 
-No 0.2.3 device installation was performed during the live connectivity investigation, to preserve that session. Permission metadata and command policy are covered by tests, but this does not claim cross-app permission enforcement or background execution was exercised between two real applications on the Honor firmware. See [EXTERNAL-CONTROL.md](EXTERNAL-CONTROL.md) for the API and Android restrictions. The VPN engine and watchdog are unchanged.
+No 0.2.4 device installation was performed during the live connectivity investigation, to preserve that session. Permission metadata and command policy are covered by tests, but this does not claim cross-app permission enforcement or background execution was exercised between two real applications on the Honor firmware. See [EXTERNAL-CONTROL.md](EXTERNAL-CONTROL.md) for the API and Android restrictions. The VPN engine and watchdog are unchanged.
+
+Linux CI exposed a race in the older network-switch test: fake-backend UP was observed before the service completed initial startup bookkeeping. The test now waits for the completed profile selection before delivering the next network event. Startup marks the live tunnel before optional selection I/O, and the active profile ID is visible across service/worker threads.
 
 ---
 
