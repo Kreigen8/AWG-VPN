@@ -50,6 +50,10 @@ public final class ProfileUpgradeTest {
         context.getSharedPreferences("routevpn_selection", Context.MODE_PRIVATE).edit().putString("selected_id", "old-stable-id").commit();
         ProfileStore store = store(context); List<Profile> loaded = store.load();
         assertEquals("", loaded.get(0).previousConfig); assertEquals("old-stable-id", store.getSelectedId());
+        ConnectionPreferences options = new ConnectionPreferences(context); options.request("old-stable-id"); options.setAutoReconnect(false);
+        options.setExternalControl(true); options.setExternalControl(false);
+        assertArrayEquals(file.toByteArray(), Files.readAllBytes(target.toPath()));
+        assertEquals("old-stable-id", store.getSelectedId()); assertTrue(options.wanted()); assertFalse(options.autoReconnect());
         loaded.get(0).previousConfig = "previous-private-placeholder"; store.save(loaded);
         assertFalse("AtomicFile must replace the previous encrypted file", java.util.Arrays.equals(file.toByteArray(), Files.readAllBytes(target.toPath())));
         Profile roundTrip = store.load().get(0);

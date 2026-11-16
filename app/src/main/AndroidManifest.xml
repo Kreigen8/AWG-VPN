@@ -14,6 +14,10 @@
     <!-- The core function is letting the user route any installed internet-enabled app. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <permission android:name="${applicationId}.permission.CONTROL_TUNNELS"
+        android:label="@string/control_tunnels_permission_label"
+        android:description="@string/control_tunnels_permission_description"
+        android:protectionLevel="dangerous" />
     <application
         android:name=".VpnApplication"
         android:allowBackup="false"
@@ -46,6 +50,13 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.USER_UNLOCKED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".ExternalControlReceiver" android:exported="true"
+            android:permission="${applicationId}.permission.CONTROL_TUNNELS">
+            <intent-filter>
+                <action android:name="ru.routevpn.app.action.SET_TUNNEL_UP" />
+                <action android:name="ru.routevpn.app.action.SET_TUNNEL_DOWN" />
             </intent-filter>
         </receiver>
         <service android:name=".VpnTileService" android:exported="true"

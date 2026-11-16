@@ -50,6 +50,9 @@ public class RouteVpnService extends Service {
     public static final String ACTION_CONNECT = "ru.routevpn.app.CONNECT";
     public static final String ACTION_DISCONNECT = "ru.routevpn.app.DISCONNECT";
     public static final String ACTION_RESTORE = "ru.routevpn.app.RESTORE";
+    static final String ACTION_EXTERNAL_CONNECT = "ru.routevpn.app.INTERNAL_EXTERNAL_CONNECT";
+    static final String ACTION_EXTERNAL_DISCONNECT = "ru.routevpn.app.INTERNAL_EXTERNAL_DISCONNECT";
+    static final String EXTRA_EXTERNAL_GENERATION = "external_generation";
     public static final String EXTRA_PROFILE_ID = "profile_id";
     private static final String CHANNEL = "vpn_connection";
     private static final int NOTIFICATION_ID = 7;
@@ -151,9 +154,40 @@ public class RouteVpnService extends Service {
     }
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_RESTORE : intent.getAction();
+        boolean external = ACTION_EXTERNAL_CONNECT.equals(action) || ACTION_EXTERNAL_DISCONNECT.equals(action);
+        if (external) {
+            if (!preferences.externalControl() || intent.getLongExtra(EXTRA_EXTERNAL_GENERATION, -1)
+                    != preferences.externalControlGeneration()) {
+                recordEvent("external_command_rejected_disabled");
+                if (!desired) stopSelf();
+                return desired && preferences.autoReconnect() ? START_STICKY : START_NOT_STICKY;
+            }
+            String target = intent.getStringExtra(EXTRA_PROFILE_ID);
+            if (ACTION_EXTERNAL_DISCONNECT.equals(action)) {
+                String runningId = activeId.isEmpty() ? preferences.profileId() : activeId;
+                if (target != null && !target.equals(runningId)) {
+                    recordEvent("external_disconnect_ignored_other_profile");
+                    if (!desired) stopSelf();
+                    return desired && preferences.autoReconnect() ? START_STICKY : START_NOT_STICKY;
+                }
+                action = ACTION_DISCONNECT;
+            } else {
+                if (target == null || target.isEmpty() || target.length() > 128 || stopping || destroying) {
+                    recordEvent("external_connect_rejected");
+                    if (!desired) stopSelf();
+                    return desired && preferences.autoReconnect() ? START_STICKY : START_NOT_STICKY;
+                }
+                recordEvent("external_connect");
+                if (desired) {
+                    if (!target.equals(activeId)) worker.execute(() -> connect(true, target, true));
+                    return preferences.autoReconnect() ? START_STICKY : START_NOT_STICKY;
+                }
+                action = ACTION_CONNECT;
+            }
+        }
         if (ACTION_DISCONNECT.equals(action)) {
             desired = false; stopping = true; preferences.clearRequest();
-            cancelHealthProbe(); recordEvent("manual_disconnect");
+            cancelHealthProbe(); recordEvent(external ? "external_disconnect" : "manual_disconnect");
             publish("DISCONNECTING", "Отключение…", latest.rx, latest.tx, latest.handshake);
             worker.execute(() -> { cancelReconnect(); tearDown(); main.post(this::stopSelf); });
             return START_NOT_STICKY;
@@ -205,6 +239,9 @@ public class RouteVpnService extends Service {
     }
     protected TunnelWatchdog.Result performHealthProbe(DnsHealthProbe probe) { return probe.run(); }
     private void connect(boolean replace) {
+        connect(replace, activeId, false);
+    }
+    private void connect(boolean replace, String targetId, boolean externalSwitch) {
         if (!desired || stopping || destroying) return;
         if (previousOwner != null) {
             try { previousOwner.cleanupComplete.get(15, TimeUnit.SECONDS); previousOwner = null; }
@@ -214,15 +251,28 @@ public class RouteVpnService extends Service {
         final Profile profile;
         final Config config;
         try {
-            profile = loadProfile(activeId);
-            if (profile == null) { failPermanently("Конфиг не найден. Выберите сохранённый профиль."); return; }
+            profile = loadProfile(targetId);
+            if (profile == null) {
+                if (externalSwitch) recordEvent("external_connect_rejected_missing_profile");
+                else failPermanently("Конфиг не найден. Выберите сохранённый профиль.");
+                return;
+            }
             config = ConfigPolicy.buildForConnection(profile, installedPackages(), getPackageName());
         } catch (IllegalArgumentException validation) {
-            failPermanently(validation.getMessage()); return;
+            if (externalSwitch) recordEvent("external_connect_rejected_invalid_profile");
+            else failPermanently(validation.getMessage()); return;
         } catch (RuntimeException inaccessible) {
-            retry("Профили временно недоступны. Разблокируйте телефон."); return;
+            if (externalSwitch) recordEvent("external_connect_rejected_storage");
+            else retry("Профили временно недоступны. Разблокируйте телефон."); return;
         }
         if (!permissionGranted()) { failPermanently("Разрешите VPN-подключение в приложении."); return; }
+        if (externalSwitch) {
+            if (!desired || stopping || destroying) return;
+            try { preferences.request(targetId); }
+            catch (RuntimeException failed) { recordEvent("external_connect_rejected_storage"); return; }
+            activeId = targetId; cancelReconnect();
+            publish("CONNECTING", "Переключаем профиль VPN…", latest.rx, latest.tx, 0);
+        }
         try {
             cancelHealthProbe();
             routingMode = profile.mode;
@@ -242,6 +292,7 @@ public class RouteVpnService extends Service {
             }
             if (!desired || stopping || destroying) return;
             backend.setState(tunnel, Tunnel.State.UP, config);
+            new ProfileStore(this).setSelectedId(targetId);
             startedAt = elapsedTime(); failures = 0;
             everStartedTunnel = true;
             watchdog.started(startedAt); lastProbeResult = "NOT_RUN";

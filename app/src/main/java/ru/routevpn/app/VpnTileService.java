@@ -12,7 +12,6 @@ import android.service.quicksettings.TileService;
 
 /** Quick Settings follows the selected profile and requires unlock before changing VPN state. */
 public final class VpnTileService extends TileService {
-    public static final String EXTRA_CONNECT = "tile_connect";
     public static void refresh(Context context) {
         try { requestListeningState(context, new ComponentName(context, VpnTileService.class)); }
         catch (RuntimeException ignored) { }
@@ -36,21 +35,21 @@ public final class VpnTileService extends TileService {
         if ("DISCONNECTING".equals(state.phase)) return;
         if (RouteVpnService.isActive(state)) {
             try { startService(new Intent(this, RouteVpnService.class).setAction(RouteVpnService.ACTION_DISCONNECT)); }
-            catch (RuntimeException restricted) { openApp(false); }
+            catch (RuntimeException restricted) { openApp(); }
         } else {
             String id = new ProfileStore(this).getSelectedId();
-            if (id == null || id.isEmpty() || VpnService.prepare(this) != null) { openApp(true); return; }
+            if (id == null || id.isEmpty() || VpnService.prepare(this) != null) { openApp(); return; }
             try {
                 startForegroundService(new Intent(this, RouteVpnService.class)
                         .setAction(RouteVpnService.ACTION_CONNECT).putExtra(RouteVpnService.EXTRA_PROFILE_ID, id));
-            } catch (RuntimeException restricted) { openApp(true); }
+            } catch (RuntimeException restricted) { openApp(); }
         }
         onStartListening();
     }
     @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated") // Intent overload is required below API 34.
-    private void openApp(boolean connect) {
-        Intent intent = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra(EXTRA_CONNECT, connect);
+    private void openApp() {
+        // Exported launcher extras must never become an unguarded external-control API.
+        Intent intent = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(PendingIntent.getActivity(this, 20, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         else startActivityAndCollapse(intent);

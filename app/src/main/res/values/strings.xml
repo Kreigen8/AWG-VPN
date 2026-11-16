@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AWG VPN</string>
+    <string name="control_tunnels_permission_label">управление VPN в AWG VPN</string>
+    <string name="control_tunnels_permission_description">Позволяет включать и отключать сохранённые VPN-профили в AWG VPN, если в нём разрешено внешнее управление. Приложение с этим разрешением сможет отключать VPN.</string>
 </resources>

@@ -12,6 +12,15 @@ import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class) @Config(sdk = {29, 35})
 public final class ConnectionPreferencesTest {
+    @Test public void externalControlDefaultsOffAndPersistsWithoutChangingExistingOptions() {
+        Context context = RuntimeEnvironment.getApplication(); ConnectionPreferences value = new ConnectionPreferences(context);
+        value.request("saved-profile"); value.setAutoReconnect(false); assertFalse(value.externalControl());
+        value.setExternalControl(true); long generation = value.externalControlGeneration();
+        ConnectionPreferences reloaded = new ConnectionPreferences(context); assertTrue(reloaded.externalControl());
+        assertEquals("saved-profile", reloaded.profileId()); assertTrue(reloaded.wanted()); assertFalse(reloaded.autoReconnect());
+        reloaded.setExternalControl(false); assertFalse(value.externalControl()); assertTrue(value.externalControlGeneration() > generation);
+        assertTrue(value.wanted()); assertEquals("saved-profile", value.profileId());
+    }
     @Test public void manualStopSurvivesNewInstanceAndBootDoesNotReconnect() {
         Context context = RuntimeEnvironment.getApplication();
         ConnectionPreferences preferences = new ConnectionPreferences(context);

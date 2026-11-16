@@ -43,6 +43,8 @@ $required = @(
     'Lru/routevpn/app/CameraQrDecoder;',
     'Lru/routevpn/app/QrPhotoReader;',
     'Lru/routevpn/app/RouteVpnService;',
+    'Lru/routevpn/app/ExternalControl;',
+    'Lru/routevpn/app/ExternalControlReceiver;',
     'Lru/routevpn/app/TunnelWatchdog;',
     'Lru/routevpn/app/DnsHealthProbe;',
     'Lru/routevpn/app/VpnApplication;',

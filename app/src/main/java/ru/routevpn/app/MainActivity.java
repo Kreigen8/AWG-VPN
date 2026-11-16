@@ -114,7 +114,6 @@ public final class MainActivity extends Activity {
         }
         buildScreen();
         render();
-        handleTileRequest();
         if (!storageReady) handler.post(() -> error("Не удалось прочитать сохранённые профили. Закройте приложение и попробуйте снова. Существующие данные не изменены."));
     }
 
@@ -130,14 +129,6 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleTileRequest();
-    }
-
-    private void handleTileRequest() {
-        if (getIntent().getBooleanExtra(VpnTileService.EXTRA_CONNECT, false)) {
-            getIntent().removeExtra(VpnTileService.EXTRA_CONNECT);
-            handler.post(() -> { if (!active(RouteVpnService.snapshot())) onConnect(); });
-        }
     }
 
     @Override protected void onStop() {
@@ -316,6 +307,24 @@ public final class MainActivity extends Activity {
             } else toast("Шторка Android → Изменить кнопки → AWG VPN.");
         });
         add(page, tile, 8);
+        add(page, text("Внешнее управление", 19, INK, true), 24);
+        CheckBox external = new CheckBox(this);
+        external.setTag("external_control");
+        external.setText("Разрешить управление через внешние приложения");
+        external.setTextColor(INK); external.setTextSize(14);
+        external.setButtonTintList(ColorStateList.valueOf(TEAL));
+        external.setMinHeight(dp(48)); external.setPadding(0, dp(6), 0, dp(6));
+        external.setChecked(connectionOptions.externalControl());
+        external.setOnCheckedChangeListener((button, enabled) -> {
+            if (enabled == connectionOptions.externalControl()) return;
+            try { connectionOptions.setExternalControl(enabled); }
+            catch (RuntimeException failed) {
+                button.setChecked(connectionOptions.externalControl());
+                error("Не удалось сохранить настройку. Попробуйте ещё раз.");
+            }
+        });
+        add(page, external, 10);
+        add(page, text("Приложения, которым вы отдельно разрешили управление VPN в Android, смогут включать и отключать сохранённые профили. Конфиги и ключи им не передаются.", 12, MUTED, false), 6);
         add(page, text("Обновления", 19, INK, true), 24);
         updateSummary = text("", 13, MUTED, false);
         add(page, updateSummary, 10);
