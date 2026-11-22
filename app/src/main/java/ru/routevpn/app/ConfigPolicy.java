@@ -63,11 +63,12 @@ public final class ConfigPolicy {
             if (installedPackages == null) {
                 throw invalid("Не удалось проверить список установленных приложений.");
             }
-            if (!installedPackages.containsAll(chosen)) {
-                throw invalid("Некоторые выбранные приложения удалены или недоступны. Обновите список приложений и сохраните выбор.");
+            chosen.retainAll(installedPackages);
+            if (Profile.ONLY_SELECTED.equals(profile.mode) && chosen.isEmpty()) {
+                throw invalid("Среди выбранных приложений нет доступных. Выберите хотя бы одно приложение для VPN.");
             }
         }
-        // Add only after validating the user's original non-empty, installed allowlist.
+        // Add only after confirming that at least one selected app is available.
         // This is the app's own control traffic; no other app's routing is changed.
         if (Profile.ONLY_SELECTED.equals(profile.mode) && !controllerPackage.isEmpty()) chosen.add(controllerPackage);
 

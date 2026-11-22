@@ -98,26 +98,33 @@ public final class ConfigPolicyTest {
         assertRejected(() -> ConfigPolicy.buildForConnection(profile, Collections.emptySet(), "ru.routevpn.app"));
         profile.packages.add("org.example.removed");
         assertRejected(() -> ConfigPolicy.build(profile, Collections.emptySet()));
-        profile.mode = Profile.EXCEPT_SELECTED;
-        assertRejected(() -> ConfigPolicy.build(profile, Collections.emptySet()));
+        assertRejected(() -> ConfigPolicy.buildForConnection(profile, Collections.emptySet(), "ru.routevpn.app"));
     }
 
     @Test public void runtimeControllerTrafficIsAllowedWithoutChangingSavedAllowListOrConfig() {
         Profile profile = ConfigPolicy.parseImported("test", BASE + PEER);
         profile.mode = Profile.ONLY_SELECTED; profile.packages.add("org.example.browser");
-        Config runtime = ConfigPolicy.buildForConnection(profile, profile.packages, "ru.routevpn.app");
+        profile.packages.add("org.example.removed");
+        Config runtime = ConfigPolicy.buildForConnection(profile, Collections.singleton("org.example.browser"), "ru.routevpn.app");
         assertEquals(new LinkedHashSet<>(Arrays.asList("org.example.browser", "ru.routevpn.app")), runtime.getInterface().getIncludedApplications());
-        assertEquals(Collections.singleton("org.example.browser"), profile.packages);
+        assertEquals(new LinkedHashSet<>(Arrays.asList("org.example.browser", "org.example.removed")), profile.packages);
         assertEquals(BASE + PEER, profile.config);
         assertEquals("22-30", runtime.getPeers().get(0).getPersistentKeepalive().get());
         assertEquals("100-120", runtime.getInterface().getInitPacketMagicHeader().get());
     }
-    @Test public void runtimeControllerNeverChangesAnExplicitDisallowList() {
+    @Test public void runtimeDisallowListKeepsOnlyAvailableApps() {
         Profile profile = ConfigPolicy.parseImported("test", BASE + PEER);
         profile.mode = Profile.EXCEPT_SELECTED; profile.packages.add("ru.routevpn.app");
-        Config runtime = ConfigPolicy.buildForConnection(profile, profile.packages, "ru.routevpn.app");
-        assertEquals(profile.packages, runtime.getInterface().getExcludedApplications());
+        profile.packages.add("org.example.removed");
+        Config runtime = ConfigPolicy.buildForConnection(profile, Collections.singleton("ru.routevpn.app"), "ru.routevpn.app");
+        assertEquals(Collections.singleton("ru.routevpn.app"), runtime.getInterface().getExcludedApplications());
         assertTrue(runtime.getInterface().getIncludedApplications().isEmpty());
+        assertEquals(new LinkedHashSet<>(Arrays.asList("ru.routevpn.app", "org.example.removed")), profile.packages);
+
+        profile.packages.remove("ru.routevpn.app");
+        runtime = ConfigPolicy.buildForConnection(profile, Collections.singleton("ru.routevpn.app"), "ru.routevpn.app");
+        assertTrue(runtime.getInterface().getIncludedApplications().isEmpty());
+        assertTrue(runtime.getInterface().getExcludedApplications().isEmpty());
     }
 
     @Test public void malformedConfigAndMissingClientFieldsAreRejected() {
